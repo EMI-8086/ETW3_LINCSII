@@ -1,216 +1,160 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { studentService } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import PageWrapper from "../components/PageWrapper";
+import { LoadingState, ErrorState } from "../components/ApiState";
+
+/*
+  Estructura real del endpoint GET /api/movil/estudiante:
+  {
+    "code": 200,
+    "flag": true,
+    "data": {
+      "numero_control", "persona", "email", "semestre",
+      "num_mat_rep_no_acreditadas", "creditos_acumulados",
+      "promedio_ponderado", "promedio_aritmetico",
+      "materias_cursadas", "materias_reprobadas", "materias_aprobadas",
+      "creditos_complementarios", "porcentaje_avance",
+      "num_materias_rep_primera", "num_materias_rep_segunda",
+      "percentaje_avance_cursando", "foto"
+    }
+  }
+*/
+
+const INFO_FIELDS = [
+  { label: "No. de Control",    key: "numero_control" },
+  { label: "Nombre",            key: "persona" },
+  { label: "Correo",            key: "email" },
+  { label: "Semestre",          key: "semestre" },
+];
+
+const STATS_FIELDS = [
+  { label: "Créditos acumulados",      key: "creditos_acumulados" },
+  { label: "Créditos complementarios", key: "creditos_complementarios" },
+  { label: "Promedio ponderado",       key: "promedio_ponderado" },
+  { label: "Promedio aritmético",      key: "promedio_aritmetico" },
+  { label: "Materias cursadas",        key: "materias_cursadas" },
+  { label: "Materias aprobadas",       key: "materias_aprobadas" },
+  { label: "Materias reprobadas",      key: "materias_reprobadas" },
+  { label: "Mat. rep. no acreditadas", key: "num_mat_rep_no_acreditadas" },
+  { label: "Rep. en primera",          key: "num_materias_rep_primera" },
+  { label: "Rep. en segunda",          key: "num_materias_rep_segunda" },
+  { label: "Avance de carrera",        key: "porcentaje_avance",         suffix: "%" },
+  { label: "Avance cursando",          key: "percentaje_avance_cursando", suffix: "%" },
+];
 
 export default function ProfilePage() {
-  const { user, updateProfile, logout } = useAuth();
-  const navigate = useNavigate();
-  const [form, setForm] = useState({
-    name: user?.name || "",
-    email: user?.email || "",
-    phone: user?.phone || "",
-    bio: user?.bio || "",
-    newPassword: "",
-    confirmPassword: "",
-  });
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState("");
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-    setError("");
-    setSuccess("");
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.name || !form.email) {
-      setError("El nombre y el correo son obligatorios");
-      return;
-    }
-    if (form.newPassword && form.newPassword.length < 6) {
-      setError("La nueva contraseña debe tener al menos 6 caracteres");
-      return;
-    }
-    if (form.newPassword && form.newPassword !== form.confirmPassword) {
-      setError("Las contraseñas no coinciden");
-      return;
-    }
+  const fetchProfile = async () => {
     setLoading(true);
+    setError("");
     try {
-      await new Promise((r) => setTimeout(r, 600));
-      const updates = {
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        bio: form.bio,
-      };
-      if (form.newPassword) updates.password = form.newPassword;
-      updateProfile(updates);
-      setSuccess("¡Perfil actualizado correctamente!");
-      setForm((f) => ({ ...f, newPassword: "", confirmPassword: "" }));
-    } catch (err) {
-      setError(err.message);
+      const res = await studentService.getProfile();
+      // La data real viene en res.data
+      setProfile(res?.data || res);
+    } catch (e) {
+      setError(e.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const initials = user?.name
-    ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-    : "U";
+  useEffect(() => { fetchProfile(); }, []);
+
+  const d = profile || {};
+  const nombre    = d.persona || user?.email || "Estudiante";
+  const initials  = nombre.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  const avance    = d.porcentaje_avance ? parseFloat(d.porcentaje_avance) : null;
 
   return (
-    <div className="app-layout">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-brand">
-          <span className="brand-icon">⬡</span>
-          <span className="brand-name">NexAuth</span>
+    <PageWrapper>
+      <header className="content-header">
+        <div>
+          <h2 className="page-title">Mi Perfil</h2>
+          <p className="page-sub">Información académica y personal</p>
         </div>
-        <nav className="sidebar-nav">
-          <a
-            href="#"
-            className="nav-item"
-            onClick={(e) => { e.preventDefault(); navigate("/home"); }}
-          >
-            <span>◈</span> Dashboard
-          </a>
-          <a href="#" className="nav-item"><span>◉</span> Proyectos</a>
-          <a href="#" className="nav-item"><span>◎</span> Mensajes</a>
-          <a href="#" className="nav-item active"><span>◈</span> Mi Perfil</a>
-        </nav>
-        <div className="sidebar-user">
-          <div className="user-avatar">{initials}</div>
-          <div className="user-info">
-            <p className="user-name">{user?.name}</p>
-            <p className="user-email">{user?.email}</p>
-          </div>
-          <button
-            className="logout-btn"
-            onClick={() => { logout(); navigate("/login"); }}
-            title="Cerrar sesión"
-          >
-            ⏻
-          </button>
-        </div>
-      </aside>
+      </header>
 
-      {/* Main */}
-      <main className="main-content">
-        <header className="content-header">
-          <div>
-            <h2 className="page-title">Mi Perfil</h2>
-            <p className="page-sub">Administra tu información personal</p>
-          </div>
-          <button className="btn-outline" onClick={() => navigate("/home")}>
-            ← Volver al inicio
-          </button>
-        </header>
+      {loading && <LoadingState message="Cargando perfil..." />}
+      {error && !loading && <ErrorState message={error} onRetry={fetchProfile} />}
 
+      {!loading && !error && (
         <div className="profile-layout">
-          {/* Avatar card */}
+
+          {/* ── Avatar card ── */}
           <div className="profile-avatar-card">
-            <div className="profile-avatar-big">{initials}</div>
-            <h3 className="profile-avatar-name">{user?.name}</h3>
-            <p className="profile-avatar-email">{user?.email}</p>
-            {user?.bio && <p className="profile-avatar-bio">{user.bio}</p>}
-            <div className="profile-badge">Usuario activo</div>
+            {d.foto ? (
+              <img src={d.foto} alt={nombre} className="profile-photo" />
+            ) : (
+              <div className="profile-avatar-big">{initials}</div>
+            )}
+
+            <h3 className="profile-avatar-name">{nombre}</h3>
+            <p className="profile-avatar-email">{d.email || user?.email}</p>
+
+            {d.semestre && (
+              <p className="profile-avatar-email">Semestre {d.semestre}</p>
+            )}
+
+            <div className="profile-badge">Estudiante activo</div>
+
+            {/* Barra de avance */}
+            {avance !== null && (
+              <div className="progress-wrap">
+                <div className="progress-header">
+                  <span className="pf-label">Avance de carrera</span>
+                  <span className="progress-pct">{avance}%</span>
+                </div>
+                <div className="progress-bar">
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${Math.min(avance, 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Form */}
+          {/* ── Info card ── */}
           <div className="profile-form-card">
-            <h3 className="form-section-title">Información personal</h3>
-            <form onSubmit={handleSubmit} className="auth-form profile-form">
-              <div className="field-row">
-                <div className="field-group">
-                  <label className="field-label">Nombre completo</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={form.name}
-                    onChange={handleChange}
-                    className="field-input"
-                    placeholder="Tu nombre"
-                  />
-                </div>
-                <div className="field-group">
-                  <label className="field-label">Correo electrónico</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    className="field-input"
-                    placeholder="usuario@correo.com"
-                  />
-                </div>
-              </div>
 
-              <div className="field-group">
-                <label className="field-label">Teléfono (opcional)</label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={form.phone}
-                  onChange={handleChange}
-                  className="field-input"
-                  placeholder="+52 000 000 0000"
-                />
-              </div>
+            {/* Datos básicos */}
+            <h3 className="form-section-title">Datos personales</h3>
+            <div className="profile-fields">
+              {INFO_FIELDS.map(({ label, key }) =>
+                d[key] !== undefined && d[key] !== "" && d[key] !== null ? (
+                  <div key={key} className="profile-field">
+                    <span className="pf-label">{label}</span>
+                    <span className="pf-value">{d[key]}</span>
+                  </div>
+                ) : null
+              )}
+            </div>
 
-              <div className="field-group">
-                <label className="field-label">Biografía (opcional)</label>
-                <textarea
-                  name="bio"
-                  value={form.bio}
-                  onChange={handleChange}
-                  className="field-input field-textarea"
-                  placeholder="Cuéntanos algo sobre ti..."
-                  rows={3}
-                />
-              </div>
+            {/* Estadísticas académicas */}
+            <h3 className="form-section-title" style={{ marginTop: "1.5rem" }}>
+              Estadísticas académicas
+            </h3>
+            <div className="stats-grid-mini">
+              {STATS_FIELDS.map(({ label, key, suffix }) =>
+                d[key] !== undefined && d[key] !== null && d[key] !== "" ? (
+                  <div key={key} className="stat-mini">
+                    <span className="stat-mini-val">
+                      {d[key]}{suffix || ""}
+                    </span>
+                    <span className="stat-mini-label">{label}</span>
+                  </div>
+                ) : null
+              )}
+            </div>
 
-              <div className="form-divider">
-                <span>Cambiar contraseña</span>
-              </div>
-
-              <div className="field-row">
-                <div className="field-group">
-                  <label className="field-label">Nueva contraseña</label>
-                  <input
-                    type="password"
-                    name="newPassword"
-                    value={form.newPassword}
-                    onChange={handleChange}
-                    className="field-input"
-                    placeholder="Dejar vacío para no cambiar"
-                  />
-                </div>
-                <div className="field-group">
-                  <label className="field-label">Confirmar contraseña</label>
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={form.confirmPassword}
-                    onChange={handleChange}
-                    className="field-input"
-                    placeholder="Repite la nueva contraseña"
-                  />
-                </div>
-              </div>
-
-              {error && <p className="error-msg">⚠ {error}</p>}
-              {success && <p className="success-msg">✓ {success}</p>}
-
-              <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? <span className="spinner" /> : "Guardar cambios"}
-              </button>
-            </form>
           </div>
         </div>
-      </main>
-    </div>
+      )}
+    </PageWrapper>
   );
 }
