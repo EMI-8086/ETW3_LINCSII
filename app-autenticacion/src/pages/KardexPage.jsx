@@ -3,25 +3,24 @@ import { studentService } from "../services/Api";
 import PageWrapper from "../components/PageWrapper";
 import { LoadingState, ErrorState } from "../components/ApiState";
 
-function normalizeKardex(raw) {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw;
-  if (raw.data && Array.isArray(raw.data)) return raw.data;
-  if (raw.kardex && Array.isArray(raw.kardex)) return raw.kardex;
-  if (raw.materias && Array.isArray(raw.materias)) return raw.materias;
-  return [];
+// 1. Nueva lógica para evaluar si está aprobada basándonos en la calificación
+function isAprobada(calificacion) {
+  const cal = parseInt(calificacion);
+  return !isNaN(cal) && cal >= 70;
 }
 
-function statusColor(status) {
-  const s = (status || "").toLowerCase();
-  if (s.includes("acredit") || s.includes("aprob") || s === "a") return "#00f5c4";
-  if (s.includes("reprob") || s === "r") return "#ff4d6d";
-  if (s.includes("cursando") || s === "c") return "#7c6cfc";
-  return "#6b7590";
+// 2. Colores dinámicos basados en la calificación y descripción
+function statusColor(calificacion, descripcion) {
+  const desc = (descripcion || "").toLowerCase();
+  if (desc.includes("cursando")) return "#7c6cfc"; // Morado para materias en curso
+  if (calificacion === "NA") return "#ff4d6d"; // Rojo explícito
+  
+  return isAprobada(calificacion) ? "#00f5c4" : "#ff4d6d"; // Verde (aprobada) o Rojo (reprobada)
 }
 
 export default function KardexPage() {
   const [kardex, setKardex] = useState([]);
+  const [avance, setAvance] = useState(0); // Nuevo estado para el porcentaje de avance
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filterSemester, setFilterSemester] = useState("all");
@@ -30,8 +29,15 @@ export default function KardexPage() {
     setLoading(true);
     setError("");
     try {
-      const data = await studentService.getKardex();
-      setKardex(normalizeKardex(data));
+      const res = await studentService.getKardex();
+      
+      // 3. Accedemos a la nueva estructura: res.data.kardex y res.data.porcentaje_avance
+      if (res?.data?.kardex) {
+        setKardex(res.data.kardex);
+        setAvance(res.data.porcentaje_avance || 0);
+      } else {
+        setKardex([]);
+      }
     } catch (e) {
       setError(e.message);
     } finally {
@@ -41,21 +47,19 @@ export default function KardexPage() {
 
   useEffect(() => { fetchKardex(); }, []);
 
+  // 4. Usamos la propiedad exacta "semestre" de la API para los filtros
   const semesters = [
     "all",
-    ...new Set(kardex.map((k) => k.semestre || k.periodo || k.semester || "").filter(Boolean)),
-  ];
+    ...new Set(kardex.map((k) => k.semestre).filter(Boolean)),
+  ].sort((a, b) => (a === "all" ? -1 : a - b));
 
   const filtered = filterSemester === "all"
     ? kardex
-    : kardex.filter(
-        (k) => (k.semestre || k.periodo || k.semester || "") === filterSemester
-      );
+    : kardex.filter((k) => k.semestre === filterSemester);
 
+  // 5. Acumulamos créditos solo de las materias que tengan calificación aprobatoria
   const creditosAcum = kardex.reduce((acc, k) => {
-    const s = (k.estatus || k.status || "").toLowerCase();
-    const aprob = s.includes("acredit") || s.includes("aprob") || s === "a";
-    return acc + (aprob ? parseInt(k.creditos || k.credits || 0) : 0);
+    return acc + (isAprobada(k.calificacion) ? parseInt(k.creditos || 0) : 0);
   }, 0);
 
   return (
@@ -65,12 +69,22 @@ export default function KardexPage() {
           <h2 className="page-title">Kardex</h2>
           <p className="page-sub">Historial académico completo</p>
         </div>
-        {creditosAcum > 0 && (
-          <div className="avg-badge">
-            <span className="avg-label">Créditos</span>
-            <span className="avg-value" style={{ color: "#7c6cfc" }}>{creditosAcum}</span>
-          </div>
-        )}
+        <div style={{ display: "flex", gap: "1rem" }}>
+          {/* Badge para el Porcentaje de Avance */}
+          {avance > 0 && (
+            <div className="avg-badge">
+              <span className="avg-label">Avance</span>
+              <span className="avg-value" style={{ color: "#00f5c4" }}>{avance}%</span>
+            </div>
+          )}
+          {/* Badge para Créditos Acumulados */}
+          {creditosAcum > 0 && (
+            <div className="avg-badge">
+              <span className="avg-label">Créditos</span>
+              <span className="avg-value" style={{ color: "#7c6cfc" }}>{creditosAcum}</span>
+            </div>
+          )}
+        </div>
       </header>
 
       {/* Filter */}
@@ -82,7 +96,7 @@ export default function KardexPage() {
               className={`filter-btn ${filterSemester === s ? "active" : ""}`}
               onClick={() => setFilterSemester(s)}
             >
-              {s === "all" ? "Todos" : s}
+              {s === "all" ? "Todos" : `Semestre ${s}`}
             </button>
           ))}
         </div>
@@ -101,26 +115,36 @@ export default function KardexPage() {
             <thead>
               <tr>
                 <th>Materia</th>
-                <th>Semestre</th>
+                <th>Periodo</th>
                 <th>Créditos</th>
                 <th>Calificación</th>
-                <th>Estatus</th>
+                <th>Evaluación</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((k, i) => {
-                const nombre = k.materia || k.asignatura || k.subject || k.nombre || `—`;
-                const semestre = k.semestre || k.periodo || k.semester || "—";
-                const creditos = k.creditos || k.credits || "—";
-                const cal = k.calificacion ?? k.calificacion_final ?? k.grade ?? "—";
-                const estatus = k.estatus || k.status || k.estado || "—";
-                const color = statusColor(estatus);
+                // 6. Mapeo exacto a las llaves del JSON
+                const nombre = k.nombre_materia || `—`;
+                const clave = k.clave_materia || `—`;
+                const periodo = k.periodo || "—";
+                const creditos = k.creditos || "—";
+                const cal = k.calificacion || "—";
+                const descripcion = k.descripcion || "—";
+
+                const color = statusColor(cal, descripcion);
+
                 return (
                   <tr key={i}>
-                    <td className="td-main">{nombre}</td>
-                    <td className="td-muted">{semestre}</td>
+                    <td className="td-main">
+                      {nombre}
+                      {/* Agregamos la clave de la materia debajo del nombre sutilmente */}
+                      <div style={{ fontSize: "0.8rem", color: "#6b7590", marginTop: "2px" }}>
+                        {clave}
+                      </div>
+                    </td>
+                    <td className="td-muted">Sem {k.semestre} ({periodo})</td>
                     <td className="td-center">{creditos}</td>
-                    <td className="td-center">{cal}</td>
+                    <td className="td-center" style={{ fontWeight: "bold", color }}>{cal}</td>
                     <td>
                       <span
                         className="status-chip"
@@ -130,7 +154,7 @@ export default function KardexPage() {
                           border: `1px solid ${color}40`,
                         }}
                       >
-                        {estatus}
+                        {descripcion}
                       </span>
                     </td>
                   </tr>
