@@ -43,6 +43,15 @@ const STATS_FIELDS = [
   { label: "Avance cursando",          key: "percentaje_avance_cursando", suffix: "%" },
 ];
 
+const formatBase64Photo = (base64String) => {
+  if (!base64String) return null;  
+  if (base64String.startsWith("data:image")) {
+    return base64String;
+  }
+  
+  return `data:image/jpeg;base64,${base64String}`;
+};
+
 export default function ProfilePage() {
   const { user } = useAuth();
   const [profile, setProfile] = useState(null);
@@ -69,6 +78,7 @@ export default function ProfilePage() {
   const nombre    = d.persona || user?.email || "Estudiante";
   const initials  = nombre.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   const avance    = d.porcentaje_avance ? parseFloat(d.porcentaje_avance) : null;
+  const fotoFormateada = formatBase64Photo(d.foto);
 
   return (
     <PageWrapper>
@@ -87,8 +97,8 @@ export default function ProfilePage() {
 
           {/* ── Avatar card ── */}
           <div className="profile-avatar-card">
-            {d.foto ? (
-              <img src={d.foto} alt={nombre} className="profile-photo" />
+            {fotoFormateada ? (
+              <img src={fotoFormateada} alt={nombre} className="profile-photo" />
             ) : (
               <div className="profile-avatar-big">{initials}</div>
             )}

@@ -5,8 +5,8 @@ import { useAuth } from "../context/AuthContext";
 const NAV = [
   { icon: "⊞", label: "Dashboard",      path: "/home"     },
   { icon: "◎", label: "Calificaciones", path: "/grades"   },
-  { icon: "▤", label: "Kardex",         path: "/kardex"   },
-  { icon: "📅", label: "Planeador",      path: "/planner"  }, // <-- Nueva opción añadida
+  { icon: "⌸", label: "Kardex",         path: "/kardex"   },
+  { icon: "▦", label: "Planeador",      path: "/planner"  }, 
   { icon: "◈", label: "Mi Perfil",      path: "/profile"  },
 ];
 

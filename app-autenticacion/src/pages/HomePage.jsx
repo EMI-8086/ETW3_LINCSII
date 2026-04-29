@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { studentService } from "../services/api";
+import { studentService } from "../services/Api"; 
 import PageWrapper from "../components/PageWrapper";
 import { LoadingState, ErrorState } from "../components/ApiState";
+import { GraduationCap, BookOpen, UserCircle, CalendarDays } from "lucide-react";
 
 const DAYS = [
   { key: "lunes",     salon: "lunes_clave_salon",    label: "Lun" },
@@ -26,25 +27,22 @@ const PALETTE = [
 ];
 
 const QUICK_CARDS = [
-  { icon: "◎", label: "Calificaciones", desc: "Resultados del periodo actual", path: "/grades",  color: "#00f5c4" },
-  { icon: "▤",  label: "Kardex",         desc: "Historial académico completo",  path: "/kardex",  color: "#7c6cfc" },
-  { icon: "◈", label: "Mi Perfil",      desc: "Datos personales y escolares",  path: "/profile", color: "#fca43c" },
+  { icon: <GraduationCap size={28} strokeWidth={1.5} />, label: "Calificaciones", desc: "Resultados del periodo actual", path: "/grades",  color: "#00f5c4" },
+  { icon: <BookOpen size={28} strokeWidth={1.5} />,      label: "Kardex",         desc: "Historial académico completo",  path: "/kardex",  color: "#7c6cfc" },
+  { icon: <CalendarDays size={28} strokeWidth={1.5} />,  label: "Planner PRO",    desc: "Proyecta tus próximos semestres", path: "/planner", color: "#60a5fa" },
+  { icon: <UserCircle size={28} strokeWidth={1.5} />,    label: "Mi Perfil",      desc: "Datos personales y escolares",  path: "/profile", color: "#fca43c" },
 ];
 
 export default function HomePage() {
   const { user } = useAuth();
   const navigate  = useNavigate();
 
-  // Perfil (para el nombre real)
   const [profile,  setProfile]  = useState(null);
-
-  // Horario
   const [scheduleData, setScheduleData] = useState(null);
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState("");
 
   useEffect(() => {
-    // Carga perfil y horario en paralelo
     Promise.allSettled([
       studentService.getProfile(),
       studentService.getSchedule(),
@@ -65,13 +63,10 @@ export default function HomePage() {
   const periodo = bloque?.periodo ?? null;
   const horario = bloque?.horario ?? [];
 
-  // Nombre: viene de perfil (persona) o del contexto de auth
-  const firstName = (profile?.persona || user?.nombre || user?.name || "Estudiante")
-    .split(" ")[0];
+  const firstName = (profile?.persona || user?.email || "Estudiante").split(" ")[0];
 
   return (
     <PageWrapper profileName={profile?.persona}>
-      {/* ── Header ── */}
       <header className="content-header">
         <div>
           <h2 className="page-title">Hola, {firstName} 👋</h2>
@@ -79,7 +74,6 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* ── Accesos rápidos ── */}
       <section>
         <h3 className="section-title">Accesos rápidos</h3>
         <div className="menu-grid" style={{ marginTop: "0.8rem" }}>
@@ -94,12 +88,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Horario ── */}
       <section>
         <div className="schedule-header">
           <h3 className="section-title">Horario del semestre</h3>
           {periodo && (
-            <span className="period-badge">{periodo.descripcion_periodo}</span>
+            <span className="period-badge" style={{ fontSize: "0.8rem", color: "var(--muted)", marginLeft: "10px" }}>
+              {periodo.descripcion_periodo}
+            </span>
           )}
         </div>
 
@@ -111,7 +106,7 @@ export default function HomePage() {
         )}
 
         {!loading && !error && horario.length > 0 && (
-          <div className="table-wrapper">
+          <div className="table-wrapper" style={{ marginTop: "1rem" }}>
             <table className="schedule-table">
               <thead>
                 <tr>
@@ -126,11 +121,11 @@ export default function HomePage() {
                   return (
                     <tr key={mat.id_grupo ?? idx} className="schedule-row">
                       <td className="td-materia" style={{ borderLeft: `3px solid ${border}` }}>
-                        <span className="mat-nombre">{mat.nombre_materia}</span>
-                        <span className="mat-clave">{mat.clave_materia}</span>
+                        <span className="mat-nombre" style={{ fontWeight: 600, display: "block" }}>{mat.nombre_materia}</span>
+                        <span className="mat-clave" style={{ fontSize: "0.75rem", color: "var(--muted)" }}>{mat.clave_materia}</span>
                       </td>
                       <td className="td-grupo">
-                        <span className="grupo-chip" style={{ background: bg, border: `1px solid ${border}` }}>
+                        <span className="grupo-chip" style={{ background: bg, border: `1px solid ${border}`, padding: "2px 8px", borderRadius: "12px", fontSize: "0.8rem" }}>
                           {mat.letra_grupo}
                         </span>
                       </td>
@@ -140,12 +135,12 @@ export default function HomePage() {
                         return (
                           <td key={d.key} className={`td-day ${hora ? "td-day--filled" : ""}`}>
                             {hora ? (
-                              <div className="day-cell" style={{ background: bg, borderColor: border }}>
-                                <span className="day-time">{hora}</span>
-                                {salon && <span className="day-salon">{salon}</span>}
+                              <div className="day-cell" style={{ background: bg, border: `1px solid ${border}`, padding: "6px", borderRadius: "8px", textAlign: "center" }}>
+                                <span className="day-time" style={{ display: "block", fontSize: "0.85rem", fontWeight: 600 }}>{hora}</span>
+                                {salon && <span className="day-salon" style={{ display: "block", fontSize: "0.7rem", opacity: 0.8 }}>{salon}</span>}
                               </div>
                             ) : (
-                              <span className="day-empty">—</span>
+                              <span className="day-empty" style={{ color: "var(--muted)", opacity: 0.3 }}>—</span>
                             )}
                           </td>
                         );

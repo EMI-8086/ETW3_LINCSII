@@ -22,7 +22,6 @@ export default function PlannerPage() {
 
   const [error, setError] = useState("");
 
-  // 💾 Guardado
   useEffect(() => {
     const saved = localStorage.getItem("planner");
     if (saved) setSemesters(JSON.parse(saved));
@@ -39,7 +38,6 @@ export default function PlannerPage() {
   const canAdd = (sub) =>
     sub.prereq.every(p => plannedIds.includes(p));
 
-  // 📊 progreso
   const totalCredits = bank.reduce((a,b)=>a+b.creditos,0);
   const plannedCredits = Object.values(semesters)
     .flat()
@@ -47,10 +45,8 @@ export default function PlannerPage() {
 
   const progress = Math.round((plannedCredits / totalCredits) * 100);
 
-  // 🧠 ya terminó?
   const isComplete = plannedIds.length === bank.length;
 
-  // ➕ agregar manual (con elección de semestre)
   const addToSemester = (sub, sem) => {
     setError("");
 
@@ -67,7 +63,6 @@ export default function PlannerPage() {
     });
   };
 
-  // 🧲 drag
   const onDragEnd = (result) => {
     if (!result.destination) return;
 
@@ -88,7 +83,6 @@ export default function PlannerPage() {
     });
   };
 
-  // 📄 PDF bonito
   const downloadPDF = () => {
     const pdf = new jsPDF();
 
