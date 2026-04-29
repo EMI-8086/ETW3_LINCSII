@@ -1,209 +1,318 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useAuth } from "../context/AuthContext";
+import { studentService } from "../services/Api";
 import PageWrapper from "../components/PageWrapper";
 import jsPDF from "jspdf";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+
+// Malla curricular simulada
+const MOCK_CURRICULUM = [
+  { id: "1", nombre: "Fundamentos de Programación", creditos: 5, prereq: [], semestre: 1 },
+  { id: "2", nombre: "Matemáticas Discretas", creditos: 5, prereq: [], semestre: 1 },
+  { id: "3", nombre: "Estructura de Datos", creditos: 5, prereq: ["1"], semestre: 2 },
+  { id: "4", nombre: "Base de Datos", creditos: 4, prereq: ["1"], semestre: 2 },
+  { id: "5", nombre: "Sistemas Operativos", creditos: 4, prereq: ["3"], semestre: 3 },
+  { id: "6", nombre: "Redes de Computadoras", creditos: 4, prereq: ["3"], semestre: 3 },
+  { id: "7", nombre: "Ingeniería de Software", creditos: 5, prereq: ["3", "4"], semestre: 4 },
+  { id: "8", nombre: "Inteligencia Artificial", creditos: 4, prereq: ["2", "3"], semestre: 5 },
+  { id: "9", nombre: "Proyecto Integrador", creditos: 6, prereq: ["5", "6", "7"], semestre: 6 },
+];
+
+const MAX_CREDITS_PER_SEMESTER = 25; // Ajustable
 
 export default function PlannerPage() {
+  const { token } = useAuth();
 
-  const [bank] = useState([
-    { id: "1", nombre: "Fundamentos", creditos: 5, prereq: [] },
-    { id: "2", nombre: "Estructura de Datos", creditos: 5, prereq: ["1"] },
-    { id: "3", nombre: "Base de Datos", creditos: 4, prereq: ["1"] },
-    { id: "4", nombre: "Sistemas Operativos", creditos: 4, prereq: ["2"] },
-    { id: "5", nombre: "Redes", creditos: 4, prereq: ["2"] },
-    { id: "6", nombre: "Ing. Software", creditos: 5, prereq: ["2","3"] },
-  ]);
-
-  const [semesters, setSemesters] = useState({
-    s1: [],
-    s2: [],
-    s3: []
-  });
-
+  const [profile, setProfile] = useState(null);
+  const [approvedIds, setApprovedIds] = useState([]);
+  const [plan, setPlan] = useState({});
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // 💾 Guardado
+  // Obtener perfil y kardex reales
   useEffect(() => {
-    const saved = localStorage.getItem("planner");
-    if (saved) setSemesters(JSON.parse(saved));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("planner", JSON.stringify(semesters));
-  }, [semesters]);
-
-  const plannedIds = useMemo(() =>
-    Object.values(semesters).flat().map(s => s.id)
-  , [semesters]);
-
-  const canAdd = (sub) =>
-    sub.prereq.every(p => plannedIds.includes(p));
-
-  // 📊 progreso
-  const totalCredits = bank.reduce((a,b)=>a+b.creditos,0);
-  const plannedCredits = Object.values(semesters)
-    .flat()
-    .reduce((a,b)=>a+b.creditos,0);
-
-  const progress = Math.round((plannedCredits / totalCredits) * 100);
-
-  // 🧠 ya terminó?
-  const isComplete = plannedIds.length === bank.length;
-
-  // ➕ agregar manual (con elección de semestre)
-  const addToSemester = (sub, sem) => {
-    setError("");
-
-    if (!canAdd(sub)) {
-      setError("Faltan prerrequisitos");
+    if (!token) {
+      setLoading(false);
       return;
     }
 
-    if (plannedIds.includes(sub.id)) return;
+    const fetchData = async () => {
+      try {
+        const profData = await studentService.getProfile();
+        setProfile(profData?.data ?? profData);
 
-    setSemesters({
-      ...semesters,
-      [sem]: [...semesters[sem], sub]
+        const kardexData = await studentService.getKardex();
+        const kardexList = Array.isArray(kardexData?.data)
+          ? kardexData.data
+          : Array.isArray(kardexData)
+          ? kardexData
+          : [];
+
+        const aprobadas = kardexList
+          .filter((item) => {
+            const cal = parseFloat(item.calificacion || item.calificacionFinal || 0);
+            return cal >= 70;
+          })
+          .map((item) => item.clave || item.idMateria || item.materiaId || "");
+
+        setApprovedIds(aprobadas);
+      } catch (err) {
+        console.error("Error al obtener datos:", err);
+        setError(err.message || "Error al cargar datos del planificador");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [token]);
+
+  const currentSemester = profile?.semestre || profile?.semestreActual || 1;
+  const totalSemesters = 9;
+
+  const futureSemesters = useMemo(() => {
+    const start = currentSemester + 1;
+    return Array.from({ length: totalSemesters - start + 1 }, (_, i) => start + i);
+  }, [currentSemester]);
+
+  // Materias que aún no has aprobado
+  const remainingSubjects = useMemo(() => {
+    return MOCK_CURRICULUM
+      .filter((sub) => !approvedIds.includes(sub.id))
+      .sort((a, b) => a.semestre - b.semestre);
+  }, [approvedIds]);
+
+  // IDs de materias ya colocadas en algún semestre
+  const plannedIds = useMemo(() => {
+    const ids = [];
+    Object.values(plan).forEach((arr) => ids.push(...arr));
+    return ids;
+  }, [plan]);
+
+  const notPlanned = remainingSubjects.filter((sub) => !plannedIds.includes(sub.id));
+
+  const totalPendingCredits = remainingSubjects.reduce((sum, s) => sum + s.creditos, 0);
+  const plannedCredits = remainingSubjects
+    .filter((s) => plannedIds.includes(s.id))
+    .reduce((sum, s) => sum + s.creditos, 0);
+  const progress = totalPendingCredits ? Math.round((plannedCredits / totalPendingCredits) * 100) : 0;
+
+  const isComplete = remainingSubjects.every((sub) => plannedIds.includes(sub.id));
+
+  // Agregar materia a un semestre (SIN validación de prerrequisitos)
+  const addToSemester = (subjectId, sem) => {
+    const subject = MOCK_CURRICULUM.find((s) => s.id === subjectId);
+    if (!subject) return;
+
+    setPlan((prev) => ({
+      ...prev,
+      [`s${sem}`]: [...(prev[`s${sem}`] || []), subjectId],
+    }));
+  };
+
+  const removeFromSemester = (subjectId, sem) => {
+    setPlan((prev) => ({
+      ...prev,
+      [`s${sem}`]: (prev[`s${sem}`] || []).filter((id) => id !== subjectId),
+    }));
+  };
+
+  const moveUp = (index, sem) => {
+    if (index === 0) return;
+    setPlan((prev) => {
+      const arr = [...(prev[`s${sem}`] || [])];
+      [arr[index], arr[index - 1]] = [arr[index - 1], arr[index]];
+      return { ...prev, [`s${sem}`]: arr };
     });
   };
 
-  // 🧲 drag
-  const onDragEnd = (result) => {
-    if (!result.destination) return;
-
-    const { source, destination } = result;
-
-    const sourceClone = [...semesters[source.droppableId]];
-    const destClone = [...semesters[destination.droppableId]];
-
-    const moved = sourceClone[source.index];
-
-    sourceClone.splice(source.index, 1);
-    destClone.splice(destination.index, 0, moved);
-
-    setSemesters({
-      ...semesters,
-      [source.droppableId]: sourceClone,
-      [destination.droppableId]: destClone
+  const moveDown = (index, sem) => {
+    setPlan((prev) => {
+      const arr = [...(prev[`s${sem}`] || [])];
+      if (index >= arr.length - 1) return prev;
+      [arr[index], arr[index + 1]] = [arr[index + 1], arr[index]];
+      return { ...prev, [`s${sem}`]: arr };
     });
   };
 
-  // 📄 PDF bonito
+  // Auto-planificar sin restricciones de prerrequisitos
+  const autoPlan = () => {
+    const newPlan = {};
+    futureSemesters.forEach((sem) => (newPlan[`s${sem}`] = []));
+
+    // Ordenar por semestre recomendado (solo para distribución visual)
+    const sorted = [...remainingSubjects].sort((a, b) => a.semestre - b.semestre);
+
+    for (const subject of sorted) {
+      let placed = false;
+      for (const sem of futureSemesters) {
+        // Solo verificamos el límite de créditos
+        const currentCredits = (newPlan[`s${sem}`] || [])
+          .map((id) => MOCK_CURRICULUM.find((s) => s.id === id)?.creditos || 0)
+          .reduce((a, b) => a + b, 0);
+        if (currentCredits + subject.creditos <= MAX_CREDITS_PER_SEMESTER) {
+          newPlan[`s${sem}`].push(subject.id);
+          placed = true;
+          break;
+        }
+      }
+      // Si no cupo en ningún semestre, forzar en el último
+      if (!placed) {
+        const lastSem = futureSemesters[futureSemesters.length - 1];
+        newPlan[`s${lastSem}`].push(subject.id);
+      }
+    }
+
+    setPlan(newPlan);
+  };
+
   const downloadPDF = () => {
     const pdf = new jsPDF();
-
-    pdf.setFont("helvetica", "bold");
     pdf.setFontSize(18);
-    pdf.text("Planeación Académica", 105, 20, null, null, "center");
-
-    pdf.setFontSize(11);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(`Fecha: ${new Date().toLocaleDateString()}`, 20, 30);
-    pdf.text(`Progreso: ${progress}%`, 20, 36);
-
-    let y = 50;
-
-    Object.keys(semesters).forEach((sem, index) => {
-      pdf.setFont("helvetica", "bold");
+    pdf.text("Plan de estudios personalizado", 105, 20, { align: "center" });
+    let y = 30;
+    futureSemesters.forEach((sem) => {
       pdf.setFontSize(14);
-      pdf.text(`Semestre ${index + 1}`, 20, y);
-      y += 6;
-
-      pdf.setFont("helvetica", "normal");
-
-      semesters[sem].forEach(sub => {
-        pdf.text(`• ${sub.nombre} (${sub.creditos} créditos)`, 25, y);
-        y += 5;
+      pdf.text(`Semestre ${sem}`, 20, y);
+      y += 8;
+      const materias = (plan[`s${sem}`] || [])
+        .map((id) => MOCK_CURRICULUM.find((s) => s.id === id))
+        .filter(Boolean);
+      materias.forEach((m) => {
+        pdf.text(`• ${m.nombre} (${m.creditos} cr)`, 25, y);
+        y += 6;
       });
-
-      y += 5;
+      y += 4;
     });
-
-    pdf.save("planeacion_academica.pdf");
+    pdf.save("mi_plan_academico.pdf");
   };
+
+  // --- RENDER ---
+  if (!token) {
+    return (
+      <PageWrapper>
+        <p style={{ color: "red" }}>Debes iniciar sesión para usar el planificador.</p>
+      </PageWrapper>
+    );
+  }
+
+  if (loading) {
+    return (
+      <PageWrapper>
+        <p>⏳ Cargando planificador...</p>
+      </PageWrapper>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageWrapper>
+        <p style={{ color: "red" }}>{error}</p>
+      </PageWrapper>
+    );
+  }
 
   return (
     <PageWrapper>
+      <h2>📅 Planificador de Semestres</h2>
+      <p>Semestre actual: {currentSemester}</p>
+      <p>
+        Faltan {totalPendingCredits - plannedCredits} créditos por planear
+        ({progress}% completado)
+      </p>
 
-      <h2>🎓 Planner PRO</h2>
-      <p>Progreso: {progress}%</p>
-
-      {/* PDF solo si terminó */}
-      {isComplete && (
-        <button onClick={downloadPDF}>
-          📄 Descargar PDF Final
+      <div style={{ marginBottom: "15px" }}>
+        <button onClick={autoPlan} style={{ marginRight: "10px" }}>
+          🤖 Auto-planificar
         </button>
-      )}
+        {isComplete && <button onClick={downloadPDF}>📄 Descargar Plan Final</button>}
+        {!isComplete && (
+          <span style={{ color: "#aaa", marginLeft: "10px" }}>
+            Completa la planeación para descargar el PDF
+          </span>
+        )}
+      </div>
 
-      {error && <p style={{color:"red"}}>{error}</p>}
-
-      <DragDropContext onDragEnd={onDragEnd}>
-        <div style={{display:"flex", gap:"20px"}}>
-
-          {Object.keys(semesters).map((sem, i) => (
-            <Droppable droppableId={sem} key={sem}>
-              {(provided) => (
+      <div style={{ marginTop: "20px" }}>
+        {futureSemesters.map((sem) => {
+          const materias = (plan[`s${sem}`] || [])
+            .map((id) => MOCK_CURRICULUM.find((s) => s.id === id))
+            .filter(Boolean);
+          return (
+            <div
+              key={sem}
+              style={{
+                border: "1px solid #666",
+                borderRadius: "8px",
+                padding: "10px",
+                marginBottom: "10px",
+                background: "#1e1e1e",
+              }}
+            >
+              <h3>Semestre {sem}</h3>
+              {materias.length === 0 && (
+                <p style={{ fontStyle: "italic", color: "#aaa" }}>Sin materias</p>
+              )}
+              {materias.map((sub, index) => (
                 <div
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
+                  key={sub.id}
                   style={{
-                    border:"1px solid #444",
-                    padding:"10px",
-                    width:"220px",
-                    minHeight:"300px",
-                    borderRadius:"10px"
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "8px",
+                    margin: "4px 0",
+                    background: "#333",
+                    borderRadius: "4px",
                   }}
                 >
-                  <h3>Semestre {i+1}</h3>
-
-                  {semesters[sem].map((sub, index) => (
-                    <Draggable key={sub.id} draggableId={sub.id} index={index}>
-                      {(provided) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          style={{
-                            padding:"10px",
-                            margin:"5px 0",
-                            background:"#222",
-                            borderRadius:"6px",
-                            ...provided.draggableProps.style
-                          }}
-                        >
-                          {sub.nombre}
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-
-                  {provided.placeholder}
+                  <span>
+                    {sub.nombre} ({sub.creditos} cr)
+                  </span>
+                  <div>
+                    <button onClick={() => moveUp(index, sem)} disabled={index === 0}>⬆️</button>
+                    <button onClick={() => moveDown(index, sem)} disabled={index >= materias.length - 1}>⬇️</button>
+                    <button onClick={() => removeFromSemester(sub.id, sem)}>🗑️</button>
+                  </div>
                 </div>
-              )}
-            </Droppable>
-          ))}
-
-        </div>
-      </DragDropContext>
+              ))}
+            </div>
+          );
+        })}
+      </div>
 
       <hr />
 
-      <h3>Materias disponibles</h3>
-
-      {bank.filter(b => !plannedIds.includes(b.id)).map(sub => (
-        <div key={sub.id} style={{margin:"10px 0", padding:"8px", border:"1px solid #333"}}>
-          <strong>{sub.nombre}</strong>
-
-          <div style={{display:"flex", gap:"5px", marginTop:"5px"}}>
-            {Object.keys(semesters).map((sem, i) => (
-              <button key={sem} onClick={() => addToSemester(sub, sem)}>
-                Sem {i+1}
+      <h3>Materias pendientes</h3>
+      {notPlanned.length === 0 && <p>✅ Todas las materias están planeadas.</p>}
+      {notPlanned.map((sub) => (
+        <div
+          key={sub.id}
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "8px",
+            margin: "4px 0",
+            background: "#2a2a2a",
+            borderRadius: "4px",
+          }}
+        >
+          <span>
+            {sub.nombre} ({sub.creditos} cr)
+          </span>
+          <div>
+            {futureSemesters.map((sem) => (
+              <button
+                key={sem}
+                onClick={() => addToSemester(sub.id, sem)}
+                style={{ marginLeft: "4px" }}
+              >
+                Sem {sem}
               </button>
             ))}
           </div>
         </div>
       ))}
-
     </PageWrapper>
   );
 }
