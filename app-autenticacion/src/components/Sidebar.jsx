@@ -1,11 +1,13 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+// Añadimos el Planeador a la lista de navegación
 const NAV = [
-  { icon: "⊞", label: "Dashboard",     path: "/home"    },
-  { icon: "◎", label: "Calificaciones", path: "/grades"  },
-  { icon: "▤",  label: "Kardex",        path: "/kardex"  },
-  { icon: "◈", label: "Mi Perfil",     path: "/profile" },
+  { icon: "⊞", label: "Dashboard",      path: "/home"     },
+  { icon: "◎", label: "Calificaciones", path: "/grades"   },
+  { icon: "▤", label: "Kardex",         path: "/kardex"   },
+  { icon: "📅", label: "Planeador",      path: "/planner"  }, // <-- Nueva opción añadida
+  { icon: "◈", label: "Mi Perfil",      path: "/profile"  },
 ];
 
 export default function Sidebar({ profileName }) {
