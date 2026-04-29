@@ -4,7 +4,7 @@ import { studentService } from "../services/Api";
 import PageWrapper from "../components/PageWrapper";
 import jsPDF from "jspdf";
 
-// Malla curricular simulada
+// Malla curricular simulada (ajústala a tu plan de estudios real)
 const MOCK_CURRICULUM = [
   { id: "1", nombre: "Fundamentos de Programación", creditos: 5, prereq: [], semestre: 1 },
   { id: "2", nombre: "Matemáticas Discretas", creditos: 5, prereq: [], semestre: 1 },
@@ -28,7 +28,7 @@ export default function PlannerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Obtener perfil y kardex reales
+  // Obtener datos reales del perfil y kardex
   useEffect(() => {
     if (!token) {
       setLoading(false);
@@ -66,22 +66,22 @@ export default function PlannerPage() {
     fetchData();
   }, [token]);
 
+  // Semestre actual: si el perfil no indica nada, asumimos 1 para mostrar todos los semestres futuros posibles
   const currentSemester = profile?.semestre || profile?.semestreActual || 1;
-  const totalSemesters = 9;
+  const totalSemesters = 12; // Todas las carreras del ITC son de 12 semestres
 
   const futureSemesters = useMemo(() => {
     const start = currentSemester + 1;
     return Array.from({ length: totalSemesters - start + 1 }, (_, i) => start + i);
   }, [currentSemester]);
 
-  // Materias que aún no has aprobado
+  // Materias que faltan por cursar
   const remainingSubjects = useMemo(() => {
     return MOCK_CURRICULUM
       .filter((sub) => !approvedIds.includes(sub.id))
       .sort((a, b) => a.semestre - b.semestre);
   }, [approvedIds]);
 
-  // IDs de materias ya colocadas en algún semestre
   const plannedIds = useMemo(() => {
     const ids = [];
     Object.values(plan).forEach((arr) => ids.push(...arr));
@@ -98,11 +98,10 @@ export default function PlannerPage() {
 
   const isComplete = remainingSubjects.every((sub) => plannedIds.includes(sub.id));
 
-  // Agregar materia a un semestre (SIN validación de prerrequisitos)
+  // Agregar materia a un semestre (sin validación de prerrequisitos)
   const addToSemester = (subjectId, sem) => {
     const subject = MOCK_CURRICULUM.find((s) => s.id === subjectId);
     if (!subject) return;
-
     setPlan((prev) => ({
       ...prev,
       [`s${sem}`]: [...(prev[`s${sem}`] || []), subjectId],
@@ -139,13 +138,11 @@ export default function PlannerPage() {
     const newPlan = {};
     futureSemesters.forEach((sem) => (newPlan[`s${sem}`] = []));
 
-    // Ordenar por semestre recomendado (solo para distribución visual)
     const sorted = [...remainingSubjects].sort((a, b) => a.semestre - b.semestre);
 
     for (const subject of sorted) {
       let placed = false;
       for (const sem of futureSemesters) {
-        // Solo verificamos el límite de créditos
         const currentCredits = (newPlan[`s${sem}`] || [])
           .map((id) => MOCK_CURRICULUM.find((s) => s.id === id)?.creditos || 0)
           .reduce((a, b) => a + b, 0);
@@ -155,7 +152,6 @@ export default function PlannerPage() {
           break;
         }
       }
-      // Si no cupo en ningún semestre, forzar en el último
       if (!placed) {
         const lastSem = futureSemesters[futureSemesters.length - 1];
         newPlan[`s${lastSem}`].push(subject.id);
