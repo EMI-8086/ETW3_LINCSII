@@ -6,6 +6,7 @@ import HomePage    from "../pages/Homepage";
 import GradesPage  from "../pages/GradesPage";
 import KardexPage  from "../pages/KardexPage";
 import ProfilePage from "../pages/ProfilePage";
+import PlannerPage from "../pages/PlannerPage"; // Nueva página
 
 export default function AppRouter() {
   return (
@@ -14,7 +15,7 @@ export default function AppRouter() {
         <Routes>
           <Route path="/"        element={<Navigate to="/login" replace />} />
           <Route path="/login"   element={<LoginPage />} />
-
+          <Route path="/planner" element={<ProtectedRoute><PlannerPage /></ProtectedRoute>} />
           <Route path="/home"    element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="/grades"  element={<ProtectedRoute><GradesPage /></ProtectedRoute>} />
           <Route path="/kardex"  element={<ProtectedRoute><KardexPage /></ProtectedRoute>} />
