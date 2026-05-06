@@ -6,13 +6,7 @@ export default defineConfig({
   base: './',
   server: {
     proxy: {
-      '/api/proxy': {
-        target: 'https://sii.celaya.tecnm.mx',
-        changeOrigin: true,
-        rewrite: () => '/api/login',
-        secure: false,
-      },
-      '/api/movil': {
+      '/api': {
         target: 'https://sii.celaya.tecnm.mx',
         changeOrigin: true,
         secure: false,
@@ -20,4 +14,3 @@ export default defineConfig({
     }
   }
 })
-

@@ -1,4 +1,5 @@
-const BASE_URL = import.meta.env.VITE_API_URL || "/api";
+// src/services/Api.jsx
+const BASE_URL = ""; // ← CAMBIA ESTO: vacío, no "/api"
 
 export function decodeToken(token) {
   try {
@@ -40,6 +41,7 @@ async function request(endpoint, options = {}) {
 
   let response;
   try {
+    // Ahora BASE_URL está vacío, así que la URL será directamente endpoint
     response = await fetch(`${BASE_URL}${endpoint}`, {
       ...options,
       headers,
@@ -49,8 +51,8 @@ async function request(endpoint, options = {}) {
     throw new Error("No se pudo conectar con el servidor. Verifica tu conexión.");
   }
 
-  // Token expirado o no autorizado
-  if (response.status === 1) {
+  // Token expirado
+  if (response.status === 401 || response.status === 1) {
     removeToken();
     window.location.href = "/login";
     throw new Error("Sesión expirada. Por favor inicia sesión nuevamente.");
@@ -71,21 +73,19 @@ async function request(endpoint, options = {}) {
   return data;
 }
 
-// Auth 
+// Auth - CORREGIDO: usa "/api/login" (no "/login")
 export const authService = {
   login: (email, password) =>
-    request("/proxy", {
+    request("/api/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
 };
 
-
-// Estudiante
+// Estudiante - Ya están bien porque ahora BASE_URL está vacío
 export const studentService = {
-  getProfile: () => request("/movil/estudiante"),
-  getGrades: () => request("/movil/estudiante/calificaciones"),
-  getKardex: () => request("/movil/estudiante/kardex"),
-  getSchedule: () => request("/movil/estudiante/horarios"),
+  getProfile: () => request("/api/perfil"),
+  getGrades: () => request("/api/calificaciones"),
+  getKardex: () => request("/api/kardex"),
+  getSchedule: () => request("/api/horarios"),
 };
-
