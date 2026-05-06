@@ -74,7 +74,7 @@ async function request(endpoint, options = {}) {
 // Auth 
 export const authService = {
   login: (email, password) =>
-    request("/login", {
+    request("/proxy", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
