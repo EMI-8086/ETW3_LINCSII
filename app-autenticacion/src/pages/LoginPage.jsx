@@ -10,6 +10,14 @@ const ERROR_MESSAGES = {
   "500": "Error interno del servidor. Intenta más tarde.",
 };
 
+fetch("/api/proxy", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify(datos),
+});
+
 function friendlyError(msg) {
   for (const [key, friendly] of Object.entries(ERROR_MESSAGES)) {
     if (msg.includes(key)) return friendly;
