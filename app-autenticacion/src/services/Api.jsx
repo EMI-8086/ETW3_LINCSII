@@ -49,7 +49,7 @@ async function request(endpoint, options = {}) {
     throw new Error("No se pudo conectar con el servidor. Verifica tu conexión.");
   }
 
-  // Token expirado o no autorizado
+  // Token expirado
   if (response.status === 1) {
     removeToken();
     window.location.href = "/login";
@@ -79,7 +79,6 @@ export const authService = {
       body: JSON.stringify({ email, password }),
     }),
 };
-
 
 // Estudiante
 export const studentService = {
