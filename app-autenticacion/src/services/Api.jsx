@@ -1,6 +1,7 @@
 // En desarrollo Vite hace de proxy → evita CORS
 // En producción cambia esto a la URL real del servidor
-const BASE_URL = "/api";
+// Usa la variable de entorno en producción, y el proxy local por defecto
+const BASE_URL = import.meta.env.VITE_API_URL || "/api";
 
 // ── JWT helpers ──────────────────────────────────────────────
 export function decodeToken(token) {
