@@ -1,9 +1,5 @@
-// En desarrollo Vite hace de proxy → evita CORS
-// En producción cambia esto a la URL real del servidor
-// Usa la variable de entorno en producción, y el proxy local por defecto
 const BASE_URL = import.meta.env.VITE_API_URL || "/api";
 
-// ── JWT helpers ──────────────────────────────────────────────
 export function decodeToken(token) {
   try {
     const payload = token.split(".")[1];
@@ -16,7 +12,6 @@ export function decodeToken(token) {
 export function isTokenExpired(token) {
   const decoded = decodeToken(token);
   if (!decoded || !decoded.exp) return true;
-  // exp está en segundos
   return Date.now() >= decoded.exp * 1000;
 }
 
@@ -33,7 +28,6 @@ export function removeToken() {
   localStorage.removeItem("auth_user");
 }
 
-// ── Fetcher base ─────────────────────────────────────────────
 async function request(endpoint, options = {}) {
   const token = getToken();
 
@@ -76,7 +70,7 @@ async function request(endpoint, options = {}) {
   return data;
 }
 
-// ── Auth ─────────────────────────────────────────────────────
+// Auth 
 export const authService = {
   login: (email, password) =>
     request("/login", {
@@ -85,7 +79,7 @@ export const authService = {
     }),
 };
 
-// ── Estudiante ───────────────────────────────────────────────
+// Estudiante
 export const studentService = {
   getProfile: () => request("/movil/estudiante"),
   getGrades: () => request("/movil/estudiante/calificaciones"),
