@@ -43,13 +43,14 @@ async function request(endpoint, options = {}) {
     response = await fetch(`${BASE_URL}${endpoint}`, {
       ...options,
       headers,
+      credentials: "include",
     });
   } catch {
     throw new Error("No se pudo conectar con el servidor. Verifica tu conexión.");
   }
 
   // Token expirado o no autorizado
-  if (response.status === 401) {
+  if (response.status === 1) {
     removeToken();
     window.location.href = "/login";
     throw new Error("Sesión expirada. Por favor inicia sesión nuevamente.");
@@ -87,3 +88,4 @@ export const studentService = {
   getKardex: () => request("/movil/estudiante/kardex"),
   getSchedule: () => request("/movil/estudiante/horarios"),
 };
+
