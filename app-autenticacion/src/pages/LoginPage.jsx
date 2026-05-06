@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import logoTecnm from "../assets/logo-tecnm.png";
 
 const ERROR_MESSAGES = {
   "Failed to fetch": "No se pudo conectar con el servidor. Verifica tu conexión.",
@@ -51,15 +52,18 @@ export default function LoginPage() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-brand">
-          <div className="brand-icon">⬡</div>
+          <div className="brand-icon">
+            <img src={logoTecnm} alt="Logo TecNM"
+            style={{ height: "65px", width: "auto", objectFit: "contain", filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.2))" }}/>
+          </div>
           <div>
-            <h1 className="brand-name">SII Celaya</h1>
-            <p className="brand-sub">TecNM Campus Celaya</p>
+            <h1 className="brand-name">LINCSII</h1>
+            <p className="brand-sub">TecNM Celaya</p>
           </div>
         </div>
 
         <h2 className="auth-title">Iniciar sesión</h2>
-        <p className="auth-subtitle">Ingresa tus credenciales institucionales</p>
+        <p className="auth-subtitle">Plataforma Institucional Real</p>
 
         <form onSubmit={handleSubmit} className="auth-form" noValidate>
           <div className="field-group">

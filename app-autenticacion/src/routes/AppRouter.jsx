@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "../context/AuthContext";
 import ProtectedRoute from "../components/ProtectedRoute";
 import LoginPage    from "../pages/LoginPage";
-import HomePage     from "../pages/HomePage"; // Corregido: P mayúscula
+import HomePage     from "../pages/HomePage"; 
 import GradesPage   from "../pages/GradesPage";
 import KardexPage   from "../pages/KardexPage";
 import ProfilePage  from "../pages/ProfilePage";

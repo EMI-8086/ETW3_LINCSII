@@ -1,7 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-// Añadimos el Planeador a la lista de navegación
 const NAV = [
   { icon: "⊞", label: "Dashboard",      path: "/home"     },
   { icon: "◎", label: "Calificaciones", path: "/grades"   },
@@ -15,7 +14,6 @@ export default function Sidebar({ profileName }) {
   const navigate         = useNavigate();
   const { pathname }     = useLocation();
 
-  // Prioridad: nombre real del perfil API > contexto auth > email
   const displayName = profileName || user?.nombre || user?.name || user?.email || "Estudiante";
   const displayEmail = user?.email || user?.correo || "";
 

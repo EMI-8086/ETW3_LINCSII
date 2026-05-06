@@ -56,6 +56,21 @@
   }
 }
 
+.brand-logo {
+  height: 10px; /* Ajusta este valor si tu logo es muy alto o bajito */
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.2)); 
+}
+
+.header-logo {
+  height: 10px;
+  width: auto;
+  object-fit: contain;
+  opacity: 0.9;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+}
+
 #center {
   display: flex;
   flex-direction: column;
