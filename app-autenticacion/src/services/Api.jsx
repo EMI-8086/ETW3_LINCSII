@@ -82,9 +82,9 @@ export const authService = {
 
 // Estudiante
 export const studentService = {
-  getProfile: () => request("/api/estudiante"),
-  getGrades: () => request("/api/estudiante/calificaciones"),
-  getKardex: () => request("/api/estudiante/kardex"),
-  getSchedule: () => request("/api/estudiante/horarios"),
+  getProfile: () => request("/api/perfil"),
+  getGrades: () => request("/api/calificaciones"),
+  getKardex: () => request("/api/kardex"),
+  getSchedule: () => request("/api/horarios"),
 };
 
