@@ -80,13 +80,13 @@ const ULTIMAS_CURSADAS = CURRICULUM
   .slice(0, 8);
 
 /* ============================
-   COLORES Y ESTILOS (COHERENTES CON KARDEX)
+   COLORES PASTEL (más bajitos)
    ============================ */
 const COLORS = {
-  primary: "#7c6cfc",
-  success: "#00f5c4",
-  danger: "#ff4d6d",
-  warning: "#facc15",     // nuevo para notificación de conflicto
+  primary: "#9f8ce0",    // morado pastel
+  success: "#7ae0a0",    // verde pastel
+  danger: "#ff8a80",     // rojo pastel
+  warning: "#ffe082",    // amarillo pastel
   muted: "#6b7590",
   border: "#2a2f3d",
   bgCard: "rgba(255,255,255,0.03)",
@@ -94,19 +94,6 @@ const COLORS = {
   text: "#e2e8f0",
   textSecondary: "#a0aec0",
 };
-
-function chipStyle(color) {
-  return {
-    color,
-    background: `${color}18`,
-    border: `1px solid ${color}40`,
-    borderRadius: "20px",
-    padding: "2px 12px",
-    fontSize: "0.8rem",
-    fontWeight: 500,
-    display: "inline-block",
-  };
-}
 
 const btnBase = {
   padding: "8px 16px",
@@ -142,7 +129,7 @@ export default function PlannerPage() {
     }
   }, [notification]);
 
-  // Verificar solapamiento horario entre dos ítems (cada uno { materia, group })
+  // Verificar solapamiento horario entre dos ítems
   const hasConflict = (item1, item2) => {
     const days1 = item1.group.days;
     const days2 = item2.group.days;
@@ -154,18 +141,15 @@ export default function PlannerPage() {
   };
 
   const addSubject = (materia, group) => {
-    // 1. Materia duplicada
     if (selected.some(item => item.materia.id === materia.id)) {
       setNotification({ type: "error", message: `La materia "${materia.nombre}" ya fue añadida al horario.` });
       return;
     }
 
-    // 2. Conflicto con materias ya añadidas
     const newItem = { materia, group };
     const conflict = selected.some(item => hasConflict(item, newItem));
     if (conflict) {
       setNotification({ type: "warning", message: `El grupo ${group.id} de "${materia.nombre}" se solapa con otra materia.` });
-      // Aún así permitimos agregar (el usuario puede querer forzarlo)
     }
 
     setSelected(prev => [...prev, newItem]);
@@ -189,18 +173,102 @@ export default function PlannerPage() {
   const meetsPrereqs = (materia) =>
     materia.prereq.every(pre => APROBADAS_IDS.includes(pre));
 
+  // Descargar PDF con diseño de tabla de horario
   const downloadPDF = () => {
-    const pdf = new jsPDF();
+    const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    // Título
+    pdf.setFont("helvetica", "bold");
     pdf.setFontSize(16);
-    pdf.text(`Horario Semestre ${nextSemester}`, 105, 20, { align: "center" });
-    let y = 30;
-    selected.forEach(({ materia, group }) => {
-      pdf.setFontSize(12);
-      pdf.text(`${materia.nombre} (${materia.id})`, 20, y);
-      y += 6;
-      pdf.text(`${group.days.join(", ")} | ${group.start} - ${group.end} | ${group.prof} | ${group.aula}`, 25, y);
-      y += 8;
+    pdf.text("Horario Semestre 10", pageWidth / 2, 15, { align: "center" });
+
+    // Configuración de la tabla
+    const marginX = 10;
+    const marginY = 20;
+    const tableWidth = pageWidth - 2 * marginX;
+    const rowHeight = 10;
+    const timeColumnWidth = 18;
+    const dayColumnWidth = (tableWidth - timeColumnWidth) / DAYS.length;
+
+    // Días de la semana (encabezados)
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFillColor(230, 230, 250); // lavanda claro
+    pdf.rect(marginX, marginY, tableWidth, rowHeight, "F");
+    pdf.setTextColor(50);
+    pdf.text("Hora", marginX + 2, marginY + 7);
+    DAYS.forEach((day, index) => {
+      const x = marginX + timeColumnWidth + index * dayColumnWidth;
+      pdf.text(day, x + dayColumnWidth / 2, marginY + 7, { align: "center" });
     });
+
+    // Líneas verticales de la cabecera
+    pdf.setDrawColor(180);
+    pdf.setLineWidth(0.2);
+    pdf.line(marginX + timeColumnWidth, marginY, marginX + timeColumnWidth, marginY + rowHeight);
+    DAYS.forEach((_, i) => {
+      const x = marginX + timeColumnWidth + (i + 1) * dayColumnWidth;
+      pdf.line(x, marginY, x, marginY + rowHeight);
+    });
+
+    // Dibujar filas de horas
+    pdf.setFont("helvetica", "normal");
+    const startHourIndex = HOURS.findIndex(h => h === "07:00");
+    const endHourIndex = HOURS.findIndex(h => h === "19:30");
+    const visibleHours = HOURS.slice(startHourIndex, endHourIndex + 1);
+
+    let currentY = marginY + rowHeight;
+    visibleHours.forEach((hour, idx) => {
+      if (idx % 2 === 0) { // solo dibujamos franjas de 30 min, pero pintamos por cada hora entera
+        pdf.setFontSize(8);
+        pdf.setTextColor(80);
+        pdf.text(hour, marginX + 2, currentY + 6);
+      }
+      // Línea horizontal tenue
+      pdf.setDrawColor(210);
+      pdf.setLineWidth(0.1);
+      pdf.line(marginX, currentY, marginX + tableWidth, currentY);
+
+      // Ver qué materias caen en esta franja
+      DAYS.forEach((day, dayIdx) => {
+        const cellX = marginX + timeColumnWidth + dayIdx * dayColumnWidth;
+        const cellClasses = (scheduleGrid[day] || []).filter(
+          ({ group }) => group && hour >= group.start && hour < group.end
+        );
+        if (cellClasses.length > 0) {
+          // Pintar rectángulo de color
+          const conf = cellClasses.length > 1;
+          pdf.setFillColor(conf ? 255 : 122, conf ? 138 : 224, conf ? 128 : 160); // rojo pastel / verde pastel
+          pdf.rect(cellX, currentY, dayColumnWidth, rowHeight, "F");
+          pdf.setTextColor(0);
+          pdf.setFontSize(6);
+          // Mostrar nombre de materia (abreviado)
+          const text = cellClasses.map(({ materia }) => materia.nombre.substring(0, 12)).join("/");
+          pdf.text(text, cellX + 1, currentY + 5, { maxWidth: dayColumnWidth - 2 });
+        }
+      });
+
+      // Líneas verticales
+      pdf.setDrawColor(180);
+      pdf.setLineWidth(0.2);
+      if (idx === visibleHours.length - 1) {
+        pdf.line(marginX + timeColumnWidth, currentY, marginX + timeColumnWidth, currentY + rowHeight);
+        DAYS.forEach((_, i) => {
+          const x = marginX + timeColumnWidth + (i + 1) * dayColumnWidth;
+          pdf.line(x, currentY, x, currentY + rowHeight);
+        });
+      }
+
+      currentY += rowHeight;
+    });
+
+    // Borde exterior
+    pdf.setDrawColor(100);
+    pdf.setLineWidth(0.8);
+    pdf.rect(marginX, marginY, tableWidth, currentY - marginY);
+
     pdf.save("mi_horario.pdf");
   };
 
@@ -402,7 +470,6 @@ export default function PlannerPage() {
                 Descargar horario
               </button>
 
-              {/* Tabla de grupos seleccionados */}
               <div className="table-wrapper" style={{ marginBottom: 24 }}>
                 <table className="data-table">
                   <thead>
@@ -443,7 +510,6 @@ export default function PlannerPage() {
                 </table>
               </div>
 
-              {/* Calendario semanal */}
               <div className="table-wrapper">
                 <table className="data-table" style={{ minWidth: 700 }}>
                   <thead>
