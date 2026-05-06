@@ -9,7 +9,6 @@ export default defineConfig({
       '/api': {
         target: 'https://sii.celaya.tecnm.mx',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '/api'),
         secure: false,
       }
     }
