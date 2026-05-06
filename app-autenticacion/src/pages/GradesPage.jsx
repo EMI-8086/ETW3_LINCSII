@@ -1,18 +1,8 @@
 import { useEffect, useState } from "react";
-import { studentService } from "../services/api";
+import { studentService } from "../services/Api";
 import PageWrapper from "../components/PageWrapper";
 import { LoadingState, ErrorState } from "../components/ApiState";
 
-/*
-  Estructura real:
-  res.data[0].periodo   → { clave_periodo, anio, descripcion_periodo }
-  res.data[0].materias  → array de materias
-    materia.materia     → { id_grupo, nombre_materia, clave_materia, letra_grupo }
-    materia.calificaiones (sic) → [
-      { id_calificacion, numero_calificacion: 1|2|3|4, calificacion: "90" | "null" | null }
-    ]
-  numero_calificacion: 1=P1, 2=P2, 3=P3, 4=Final/Ordinario
-*/
 
 const PARCIALES = [
   { num: 1, label: "Parcial 1" },
@@ -118,10 +108,7 @@ export default function GradesPage() {
             <tbody>
               {materias.map((item, idx) => {
                 const mat    = item.materia ?? {};
-                // Nota: la API tiene typo "calificaiones" (sin 'c' en ciones)
                 const califs = item.calificaiones ?? item.calificaciones ?? [];
-
-                // Indexar por numero_calificacion para acceso rápido
                 const byNum = {};
                 califs.forEach((c) => { byNum[c.numero_calificacion] = c.calificacion; });
 

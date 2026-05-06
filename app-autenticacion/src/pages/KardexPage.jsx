@@ -3,24 +3,22 @@ import { studentService } from "../services/Api";
 import PageWrapper from "../components/PageWrapper";
 import { LoadingState, ErrorState } from "../components/ApiState";
 
-// 1. Nueva lógica para evaluar si está aprobada basándonos en la calificación
 function isAprobada(calificacion) {
   const cal = parseInt(calificacion);
   return !isNaN(cal) && cal >= 70;
 }
 
-// 2. Colores dinámicos basados en la calificación y descripción
 function statusColor(calificacion, descripcion) {
   const desc = (descripcion || "").toLowerCase();
-  if (desc.includes("cursando")) return "#7c6cfc"; // Morado para materias en curso
-  if (calificacion === "NA") return "#ff4d6d"; // Rojo explícito
+  if (desc.includes("cursando")) return "#7c6cfc"; 
+  if (calificacion === "NA") return "#ff4d6d"; 
   
-  return isAprobada(calificacion) ? "#00f5c4" : "#ff4d6d"; // Verde (aprobada) o Rojo (reprobada)
+  return isAprobada(calificacion) ? "#00f5c4" : "#ff4d6d"; 
 }
 
 export default function KardexPage() {
   const [kardex, setKardex] = useState([]);
-  const [avance, setAvance] = useState(0); // Nuevo estado para el porcentaje de avance
+  const [avance, setAvance] = useState(0); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filterSemester, setFilterSemester] = useState("all");
@@ -31,7 +29,6 @@ export default function KardexPage() {
     try {
       const res = await studentService.getKardex();
       
-      // 3. Accedemos a la nueva estructura: res.data.kardex y res.data.porcentaje_avance
       if (res?.data?.kardex) {
         setKardex(res.data.kardex);
         setAvance(res.data.porcentaje_avance || 0);
@@ -47,7 +44,6 @@ export default function KardexPage() {
 
   useEffect(() => { fetchKardex(); }, []);
 
-  // 4. Usamos la propiedad exacta "semestre" de la API para los filtros
   const semesters = [
     "all",
     ...new Set(kardex.map((k) => k.semestre).filter(Boolean)),
@@ -57,7 +53,7 @@ export default function KardexPage() {
     ? kardex
     : kardex.filter((k) => k.semestre === filterSemester);
 
-  // 5. Acumulamos créditos solo de las materias que tengan calificación aprobatoria
+  //Acumulamos créditos solo de las materias que tengan calificación aprobatoria
   const creditosAcum = kardex.reduce((acc, k) => {
     return acc + (isAprobada(k.calificacion) ? parseInt(k.creditos || 0) : 0);
   }, 0);
@@ -123,7 +119,6 @@ export default function KardexPage() {
             </thead>
             <tbody>
               {filtered.map((k, i) => {
-                // 6. Mapeo exacto a las llaves del JSON
                 const nombre = k.nombre_materia || `—`;
                 const clave = k.clave_materia || `—`;
                 const periodo = k.periodo || "—";

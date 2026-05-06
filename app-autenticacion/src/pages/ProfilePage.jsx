@@ -1,25 +1,9 @@
 import { useEffect, useState } from "react";
-import { studentService } from "../services/api";
+import { studentService } from "../services/Api";
 import { useAuth } from "../context/AuthContext";
 import PageWrapper from "../components/PageWrapper";
 import { LoadingState, ErrorState } from "../components/ApiState";
 
-/*
-  Estructura real del endpoint GET /api/movil/estudiante:
-  {
-    "code": 200,
-    "flag": true,
-    "data": {
-      "numero_control", "persona", "email", "semestre",
-      "num_mat_rep_no_acreditadas", "creditos_acumulados",
-      "promedio_ponderado", "promedio_aritmetico",
-      "materias_cursadas", "materias_reprobadas", "materias_aprobadas",
-      "creditos_complementarios", "porcentaje_avance",
-      "num_materias_rep_primera", "num_materias_rep_segunda",
-      "percentaje_avance_cursando", "foto"
-    }
-  }
-*/
 
 const INFO_FIELDS = [
   { label: "No. de Control",    key: "numero_control" },
